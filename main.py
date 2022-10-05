@@ -3,9 +3,11 @@
 import telebot
 from telebot import types
 
+from telebot.async_telebot import AsyncTeleBot
+
 from config import TOKEN
 
-bot = telebot.TeleBot(TOKEN, parse_mode="MarkdownV2")
+bot = AsyncTeleBot(TOKEN, parse_mode="MarkdownV2")
 
 from database import Users
 
@@ -15,15 +17,19 @@ from cgitb import text
 from tabnanny import check
 from unicodedata import name
 from xml.dom.domreg import registered
+from random import randint
 
 
-sex = None
-age = None
-search = False
+globalVar= {
+  	"chatid":{
+		"sex": 					"None",
+		"user_status": 			"None",
+  	}
+}
 
 
 @bot.message_handler(commands=["start"])
-def send_welcome(message):
+async def send_welcome(message):
 	user_registered = check_register(message.from_user.id)
 
 	text = message.from_user.full_name + ", добро пожаловать в наш анонимный чат\!"
@@ -35,30 +41,110 @@ def send_welcome(message):
 		search_interlocutor(message.from_user.id)
 
 
+@bot.message_handler(commands=["stop"])
+async def command_stop(message):
+	stop_search_interlocutor(message, message.from_user.id)
+
+# next
+
+@bot.message_handler(commands=["link"])
+async def command_link(message):
+	link(message.from_user.id)
+
+@bot.message_handler(commands=["menu"])
+async def command_menu(message):
+	menu(message.from_user.id)
+
 @bot.message_handler(commands=["help"])
-def command_help(message):
+async def command_help(message):
 	help(message.from_user.id)
 
 
-@bot.message_handler(commands=["stop"])
-def command_stop(message):
-	stop_search_interlocutor(message.from_user.id)
 
-@bot.message_handler(commands=["menu"])
-def command_menu(message):
-	menu(message.from_user.id)
+@bot.message_handler(content_types=types.ContentType.ANY)
+async def messages(message):
+	interlocutor = Users().get_field(message.from_user.id, "interlocutor")
 
-
-
+	# Если есть собеседник, то сообщения отправляются ему
+	if interlocutor != None:
+		communication_interlocutor(interlocutor, message)
 
 
+
+
+
+
+
+
+
+async def search(user_id):
+	rnd_user_id = None
+
+	while rnd_user_id == None:
+		if globalVar[id]["user_status"] == "Search":
+			all_id = Users().get_all_id()
+			ids_searchs = {}
+			i = -1
+			for id in all_id:
+				if globalVar[id]["user_status"] == "Search":
+					i += 1
+					ids_searchs[i] = id
+			
+			if i > -1:
+				rnd_user_id = randint(0, i)
+				if globalVar[rnd_user_id]["user_status"] != "Search":
+					rnd_user_id = None
+		else:
+			break
+	
+	return rnd_user_id
+
+
+
+
+
+
+async def communication_interlocutor(interlocutor_id, message, link = None):
+	if message.text != "/start" and message.text != "/stop" and message.text != "/next" and\
+	message.text != "/link" and message.text != "/menu" and message.text != "/help":
+		if link == None:
+			send_message(message.text, interlocutor_id)
+		else:
+			text = "Ссылка на собеседника: " + link
+			send_message(text, interlocutor_id)
+			send_message("Ссылка успешно отправлена!", message.chat.id, message.message_id)
+
+
+
+
+
+
+
+
+
+
+async def send_message(text, chat_id, message_id, keyboard = None):
+	if message_id == None:
+		bot.send_message(chat_id, text, reply_markup = keyboard)
+	else:
+		bot.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
+async def send_link(message):
+	interlocutor = Users().get_field(message.from_user.id, "interlocutor")
+
+	# Если есть собеседник, то сообщения отправляются ему
+	if interlocutor != None:
+		link = message.from_user.username
+		communication_interlocutor(interlocutor, message, link)
+	else:
+		send_message("У вас нет собеседников, кому вы могли бы отправить ссылку на свой профиль\!",
+			message.chat.id, message.message_id)
 
 
 
 
 
 # -------------------- База Данных --------------------
-def db_request_sex(chat_id):
+async def db_request_sex(chat_id):
 	# Делаем запрос данных
 	sex = Users().get_field(chat_id, "sex")
 	
@@ -72,7 +158,7 @@ def db_request_sex(chat_id):
 
 	return text, sex
 
-def db_request_age(chat_id):
+async def db_request_age(chat_id):
 	age = Users().get_field(chat_id, "age")
 
 	# Возраст
@@ -87,7 +173,7 @@ def db_request_age(chat_id):
 
 	return text, age
 
-def	db_request_premium(chat_id):
+async def	db_request_premium(chat_id):
 	premium = Users().get_field(chat_id, "premium")
 	premium_time = Users().get_field(chat_id, "premium_time")
 
@@ -100,7 +186,7 @@ def	db_request_premium(chat_id):
 
 	return text, premium, premium_time
 
-def db_request_admin(chat_id):
+async def db_request_admin(chat_id):
 	admin = Users().get_field(chat_id, "admin")
 	admin_lvl = Users().get_field(chat_id, "admin_lvl")
 
@@ -126,26 +212,15 @@ def db_request_admin(chat_id):
 
 
 
-def send_message(text, chat_id, message_id, keyboard = None):
-	if message_id == None:
-		bot.send_message(chat_id, text, reply_markup = keyboard)
-	else:
-		bot.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
-
-
-
-
-
 # -------------------- Кнопки под сообщениями --------------------
 @bot.callback_query_handler(func = lambda call: True)
-def callback_worker(call):
+async def callback_worker(call):
 	user_registered = check_register(call.message.chat.id)
 
 	# ---------------------------------------- РЕГИСТРАЦИЯ ----------------------------------------
 	if call.data == "sex_male" or call.data == "sex_female":										# При изменении пола
 		if not user_registered:
-			global sex
-			sex = call.data
+			globalVar[call.message.chat.id]["sex"] = call.data
 
 			keyboard = kb_change_age()
 
@@ -159,7 +234,7 @@ def callback_worker(call):
 			bot.send_message(call.message.chat.id, "Ваш пол был изменён\!", reply_markup = keyboard)
 	elif call.data == "age_child" or call.data == "age_teen" or call.data == "age_adult":			# При изменении возраста
 		if not user_registered:
-			Users().add_id_to_db(call.message.chat.id, sex, call.data)
+			Users().add_id_to_db(call.message.chat.id, globalVar[call.message.chat.id]["sex"], call.data)
 
 			keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 
@@ -186,10 +261,16 @@ def callback_worker(call):
 
 	# Поиск
 	elif call.data == "start_search_interlocutor":													# Поиск собеседника
-		search_interlocutor(call.message.chat.id, call.message.message_id)
+		search_interlocutor(call.message, call.message.message_id)
 	elif call.data == "stop_search_interlocutor":													# Отмена поиска собеседника
-		stop_search_interlocutor(call.message.chat.id, call.message.message_id)
+		stop_search_interlocutor(call.message, call.message.chat.id, call.message.message_id)
 	
+
+	# Ссылка на профиль
+	elif call.data == "send_link":
+		send_link(call.message)
+	elif call.data == "cancel_send_link":
+		bot.delete_message(call.message.chat.id, call.message.message_id)
 	
 
 	# Менюшные
@@ -211,7 +292,7 @@ def callback_worker(call):
 
 
 
-def help(chat_id, message_id = None):
+async def help(chat_id, message_id = None):
 	text = 	"*Основные команды\:*\
 			\n/start \- начать поиск собеседника\
 			\n/stop \- остановить поиск / отменить диалог\
@@ -222,7 +303,7 @@ def help(chat_id, message_id = None):
 	
 	send_message(text, chat_id, message_id)
 
-def menu(chat_id, message_id = None):
+async def menu(chat_id, message_id = None):
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 	
 	# Кнопки
@@ -245,7 +326,7 @@ def menu(chat_id, message_id = None):
 
 	send_message(text, chat_id, message_id, keyboard)
 
-def premium(chat_id, message_id = None):
+async def premium(chat_id, message_id = None):
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 	keyboard = kb_to_menu(keyboard)
 	
@@ -267,7 +348,7 @@ def premium(chat_id, message_id = None):
 
 
 
-def profile(chat_id, message_id = None):
+async def profile(chat_id, message_id = None):
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 	keyboard = kb_to_menu(keyboard)
 
@@ -291,9 +372,28 @@ def profile(chat_id, message_id = None):
 
 
 
+async def link(user_id):
+	text = "Вы уверены, что хотите отправить пользователю ссылку на свой профиль?\n\n"
+
+	keyboard = types.InlineKeyboardMarkup()
+
+	# Кнопки
+	key_send_link = types.InlineKeyboardButton(text = "✅ Отправить",
+		callback_data = "send_link")
+	key_cancel_send_link = types.InlineKeyboardButton(text = "❌ Не отправлять",
+		callback_data = "cancel_send_link")
+	
+	# Добавляем кнопки в клавиатуру
+	keyboard.add(key_send_link)
+	keyboard.add(key_cancel_send_link)
+
+	send_message(text, user_id, keyboard)
+
+
+
 
 # Проверка регистрации
-def check_register(user_id):
+async def check_register(user_id):
 	user_registered = False
 
 	all_id = Users().get_all_id()
@@ -305,55 +405,84 @@ def check_register(user_id):
 #
 
 # -------------------- РЕГИСТРАЦИЯ --------------------
-def register(chat_id, message_id = None):
+async def register(user_id, message_id = None):
 	text = "🔒 Сначала нужно пройти регистрацию\!\
 		\n\nВыберите ваш пол (можно сменить в любой момент в настройках)\:"
 
 	keyboard = kb_change_sex()
 
-	send_message(text, chat_id, message_id, keyboard)
+	send_message(text, user_id, message_id, keyboard)
 # ----------------------------------------------------------------------
 
 
 
 
 
-def search_interlocutor(chat_id, message_id = None):
-	user_registered = check_register(chat_id)
+async def search_interlocutor(message, message_id = None):
+	user_registered = check_register(message.from_user.id)
 	if user_registered:
+		interlocutor = Users().get_field(message.from_user.id, "interlocutor")
+		
+		text = ""
+		btn_txt = "❌ Отменить поиск ❌"
+		if interlocutor == None:
+			if globalVar[message.chat.id]["user_status"] == "None":
+				globalVar[message.chat.id]["user_status"] = "Search"
+
+				text = "🔍 Ищем собеседника\.\.\."
+
+				# Поиск собеседника (в ассинхронном режиме???)
+				
+			elif globalVar[message.chat.id]["user_status"] == "Search":
+				text = "Поиск собеседника уже идёт\! Отменить\?"
+		else:
+			text = "Вы уже в диалоге\. Остановить диалог\?"
+			btn_txt = "❌ Остановить диалог ❌"
+		
+
 		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 
 		# Кнопки
-		key_start_search_interlocutor = types.InlineKeyboardButton(text = "❌ Отменить поиск ❌",
+		key_stop_search_interlocutor = types.InlineKeyboardButton(text = btn_txt,
 			callback_data = "stop_search_interlocutor")
 		
 		# Добавляем кнопки в клавиатуру
-		keyboard.add(key_start_search_interlocutor)
-		
-		global search
-		text = ""
-		if not search:
-			search = True
-
-			# Поиск собеседника (в ассинхронном режиме???)
-
-			text = "🔍 Ищем собеседника\.\.\."
-		else:
-			text = "Поиск собеседника уже идёт\! Отменить\?"
+		keyboard.add(key_stop_search_interlocutor)
 		
 
-		send_message(text, chat_id, message_id, keyboard)
+		send_message(text, message.chat.id, message_id, keyboard)
 	else:
-		text = register(chat_id, message_id)
+		text = register(message.from_user.id, message_id)
 
-def stop_search_interlocutor(chat_id, message_id = None):
-	global search
-	search = False
-
-	text = "❌ Поиск собеседника остановлен\!"
+async def stop_search_interlocutor(message, chat_id, message_id = None):
+	interlocutor = Users().get_field(message.from_user.id, "interlocutor")
 
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
+
+	# Кнопки
+	key_search = types.InlineKeyboardButton(text = "🔍 Начать поиск", callback_data = "start_search_interlocutor")
+
+	# Добавляем кнопки в клавиатуру
+	keyboard.add(key_search)
+
 	keyboard = kb_to_menu(keyboard)
+
+	text = ""
+	if interlocutor == None:
+		if globalVar[message.chat.id]["user_status"] == "None":
+			text = "У вас нет активного поиска / диалога\!"
+		elif globalVar[message.chat.id]["user_status"] == "Search":
+			text = "❌ Поиск собеседника остановлен\!"
+			globalVar[message.chat.id]["user_status"] = "None"
+	else:
+		text = "❌ Диалог остановлен\!"
+		globalVar[message.chat.id]["user_status"] = "None"
+		# Добавить кнопку нового поиска
+
+		# Отправить собеседнику сообщение, что диалог остановлен
+		send_message("❌ Собеседник остановил диалог\.", interlocutor, None, keyboard)
+		globalVar[interlocutor]["user_status"] = "None"
+	
 
 	send_message(text, chat_id, message_id, keyboard)
 
@@ -361,7 +490,7 @@ def stop_search_interlocutor(chat_id, message_id = None):
 
 
 
-def kb_to_menu(keyboard):
+async def kb_to_menu(keyboard):
 	# Кнопки
 	key_to_menu = types.InlineKeyboardButton(text = "⬅️ Вернуться в меню", callback_data = "to_menu")
 
@@ -371,7 +500,7 @@ def kb_to_menu(keyboard):
 	return keyboard
 
 
-def kb_change_sex():
+async def kb_change_sex():
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 
 	# Кнопки
@@ -386,7 +515,7 @@ def kb_change_sex():
 
 	return keyboard
 
-def kb_change_age():
+async def kb_change_age():
 	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
 
 	# Кнопки
@@ -405,4 +534,5 @@ def kb_change_age():
 
 
 
-bot.infinity_polling(none_stop = True, interval = 0)
+import asyncio
+asyncio.run(bot.polling())
