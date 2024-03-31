@@ -6,11 +6,7 @@ from telebot.async_telebot import types
 import asyncio
 
 from config import TOKEN
-
-bot = AsyncTeleBot(TOKEN, parse_mode="HTML")
-
 from database import Users
-
 
 from atexit import register
 from cgitb import text
@@ -26,6 +22,11 @@ import datetime
 globalVar = {}
 
 
+
+bot = AsyncTeleBot(TOKEN, parse_mode="HTML")
+
+
+# Команда /start
 @bot.message_handler(commands=["start"])
 async def send_welcome(message):
 	user_registered = await check_user_in_globalVar(message.chat.id)
@@ -39,6 +40,7 @@ async def send_welcome(message):
 		await search_interlocutor(message)
 
 
+# Команда /stop
 @bot.message_handler(commands=["stop"])
 async def command_stop(message):
 	user_registered = await check_user_in_globalVar(message.chat.id)
@@ -47,8 +49,8 @@ async def command_stop(message):
 	else:
 		await stop_search_interlocutor(message)
 
-# next
 
+# Команда /link
 @bot.message_handler(commands=["link"])
 async def command_link(message):
 	user_registered = await check_user_in_globalVar(message.chat.id)
@@ -57,6 +59,7 @@ async def command_link(message):
 	else:
 		await communication_interlocutor(message, True)
 
+# Команда /menu
 @bot.message_handler(commands=["menu"])
 async def command_menu(message):
 	user_registered = await check_user_in_globalVar(message.chat.id)
@@ -65,6 +68,7 @@ async def command_menu(message):
 	else:
 		await menu(message)
 
+# Команда /help
 @bot.message_handler(commands=["help"])
 async def command_help(message):
 	user_registered = await check_user_in_globalVar(message.chat.id)
@@ -87,8 +91,9 @@ async def messages(message):
 
 
 
+# Клавиатура
 async def search_dialog():
-	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
+	keyboard = types.InlineKeyboardMarkup();
 
 	# Кнопки
 	key_stop_search_interlocutor = types.InlineKeyboardButton("❌ Остановить диалог ❌",
