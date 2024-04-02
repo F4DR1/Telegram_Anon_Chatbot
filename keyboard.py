@@ -5,7 +5,7 @@ class Buttons:
     async def change_gender(self, keyboard):
         keyboard.add(types.InlineKeyboardButton(text = "🚹 Мужской 🚹", callback_data = "gender_male"))
         keyboard.add(types.InlineKeyboardButton(text = "🚺 Женский 🚺", callback_data = "gender_female"))
-        keyboard.add(types.InlineKeyboardButton(text = "🚺 Другой 🚺", callback_data = "gender_other"))
+        keyboard.add(types.InlineKeyboardButton(text = "🏳️‍🌈 Другой 🏳️‍🌈", callback_data = "gender_other"))
         return keyboard
 
     # Изменить возраст
@@ -23,7 +23,7 @@ class Buttons:
         return keyboard
     
     # Начать поиск
-    async def start_search(self, keyboard, btn_txt):
+    async def start_search(self, keyboard):
         keyboard.add(types.InlineKeyboardButton(text = "🔍 Начать поиск", callback_data = "start_search_partner"))
         return keyboard
     

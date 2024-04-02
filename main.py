@@ -35,7 +35,7 @@ async def communication_partner(message, link = False):
 		await register(message)
 	else:
 		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
-		if partner[0] is None:
+		if partner is not None and partner[0] is None:
 			await send_message("❌ У вас нет собеседников, кому вы могли бы отправить сообщение!", message.chat.id)
 		else:
 			if link:
@@ -124,11 +124,14 @@ async def callback_worker(call):
 	if call.data == "gender_male" or call.data == "gender_female" or call.data == "gender_other":
 		text = ""
 		if not user_registered:
-			globalVar[call.message.chat.id]["gender"] = call.data
-			text = "Теперь выбери свой возраст (можно сменить в любой момент в настройках):"
-			keyboard = await Buttons().change_age(keyboard)
+			if len(globalVar) == 0 or globalVar[call.message.chat.id] is None:
+				await register(call.message)
+			else:
+				globalVar[call.message.chat.id]["gender"] = call.data
+				text = "Теперь выбери свой возраст (можно сменить в любой момент в настройках):"
+				keyboard = await Buttons().change_age(keyboard)
 		else:
-			Users().post(call.message.chat.id, "gender", call.data)
+			Users().post(call.message.chat.id, "gender", f"'{call.data}'")
 			text = "Ваш пол был изменён!"
 			keyboard = await Buttons().to_menu(keyboard)
 		await send_message(text, call.message.chat.id, call.message.message_id, keyboard)
@@ -137,14 +140,16 @@ async def callback_worker(call):
 	elif call.data == "age_child" or call.data == "age_teen" or call.data == "age_adult":
 		text = ""
 		if not user_registered:
-			# Вносим данные
-			globalVar[call.message.chat.id]["age"] = call.data
-			Users().put(call.message.chat.id, globalVar[call.message.chat.id]["gender"], globalVar[call.message.chat.id]["age"])
-			text = "Поздравляем с регистрацией! Теперь вы можете общаться в нашем чате."
-			keyboard = await Buttons().start_search(keyboard)
-			keyboard = await Buttons().to_menu(keyboard)
+			if len(globalVar) == 0 or globalVar[call.message.chat.id] is None:
+				await register(call.message)
+			else:
+				globalVar[call.message.chat.id]["age"] = call.data
+				Users().put(call.message.chat.id, globalVar[call.message.chat.id]["gender"], globalVar[call.message.chat.id]["age"])
+				text = "Поздравляем с регистрацией! Теперь вы можете общаться в нашем чате."
+				keyboard = await Buttons().start_search(keyboard)
+				keyboard = await Buttons().to_menu(keyboard)
 		else:
-			Users().post(call.message.chat.id, "age", call.data)
+			Users().post(call.message.chat.id, "age", f"'{call.data}'")
 			text = "Ваш возраст был изменён."
 			keyboard = await Buttons().to_menu(keyboard)
 		await send_message(text, call.message.chat.id, call.message.message_id, keyboard)
@@ -195,7 +200,6 @@ async def help(message, message_id = None):
 	keyboard = await Buttons().to_menu(types.InlineKeyboardMarkup())
 	await send_message(text, message.chat.id, message_id, keyboard)
 
-
 # Меню
 async def menu(message, message_id = None):
 	# Клавиатура
@@ -206,13 +210,12 @@ async def menu(message, message_id = None):
 	text = "🗂 <b>Меню</b> 🗂\n\nВыберите действие:"
 	await send_message(text, message.chat.id, message_id, keyboard)
 
-
 # Профиль
 async def profile(message, message_id = None):
 	txt_gender, gender = await db_request_gender(message.chat.id)
 	txt_age, age = await db_request_age(message.chat.id)
 
-	text = f"💼 <b>Профиль</b> 💼\n{txt_gender}\n{txt_age}"
+	text = f"💼 <b>Профиль</b> 💼\n{txt_gender}{txt_age}"
 
 	# Клавиатура
 	keyboard = await Buttons().to_menu(types.InlineKeyboardMarkup())
@@ -226,34 +229,36 @@ async def profile(message, message_id = None):
 async def db_request_gender(user_id):
 	# Делаем запрос данных
 	result = Users().get(user_id, "gender").fetchone()
-	gender = result[0]
+	if result is not None:
+		gender = result[0]
 
-	# Пол
-	if gender == "gender_male":
-		gender = "Мужской"
-	elif gender == "gender_female":
-		gender = "Женский"
-	else:
-		gender = "Другой"
+		# Пол
+		if gender == "gender_male":
+			gender = "Мужской"
+		elif gender == "gender_female":
+			gender = "Женский"
+		else:
+			gender = "Другой"
 
-	text = f"\n🚻 Пол: <i>{gender}</i>"
-	return text, gender
+		text = f"\n🚻 Пол: <i>{gender}</i>"
+		return text, gender
 
 # Получить возраст
 async def db_request_age(user_id):
 	result = Users().get(user_id, "age").fetchone()
-	age = result[0]
+	if result is not None:
+		age = result[0]
 
-	# Возраст
-	if age == "age_child":
-		age = "До 14 лет"
-	elif age == "age_teen":
-		age = "14-17 лет"
-	else:
-		age = "18 лет и старше"
+		# Возраст
+		if age == "age_child":
+			age = "До 14 лет"
+		elif age == "age_teen":
+			age = "14-17 лет"
+		else:
+			age = "18 лет и старше"
 
-	text = f"\n🔞 Возраст: <i>{age}</i>"
-	return text, age
+		text = f"\n🔞 Возраст: <i>{age}</i>"
+		return text, age
 # ----------------------------------------
 
 
@@ -263,7 +268,7 @@ async def db_request_age(user_id):
 async def check_register(chat_id):
 	user_registered = False
 	result = Users().get(chat_id).fetchone()
-	if result[0] is not None:
+	if result is not None and result[0] == chat_id:
 		user_registered = True
 	return user_registered
 
@@ -295,12 +300,12 @@ async def start_search_partner(message, message_id = None):
 		btn_txt = "❌ Отменить поиск ❌"
 
 		searchStatus = Users().get(message.chat.id, "search").fetchone()
-		if searchStatus[0] == 0:
+		if searchStatus is not None and searchStatus[0] == 0:
 			Users().post(message.chat.id, "search", 1)
 			text = "🔍 Ищем собеседника..."
 		
 		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
-		if partner[0] is not None:
+		if partner is not None and partner[0] is not None:
 			text = "Вы уже в диалоге. Остановить его?"
 			btn_txt = "❌ Остановить диалог ❌"
 
@@ -318,12 +323,12 @@ async def stop_search_partner(message, message_id = None):
 		text = "У вас нет активного поиска / диалога!"
 		
 		searchStatus = Users().get(message.chat.id, "search").fetchone()
-		if searchStatus[0] == 1:
+		if searchStatus is not None and searchStatus[0] == 1:
 			Users().post(message.chat.id, "search", 0)
 			text = "❌ Поиск собеседника остановлен!"
 
 		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
-		if partner[0] is not None:
+		if partner is not None and partner[0] is not None:
 			Chats().delete(message.chat.id)
 			Chats().delete(partner[0])
 			await send_message("❌ Собеседник остановил диалог.", partner[0], None, keyboard)
