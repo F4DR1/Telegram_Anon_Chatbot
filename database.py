@@ -1,10 +1,11 @@
 # Подключаем библиотеку
 import sqlite3
+from config import DATABASE
 
 class Users:
     # Функция для соединения с БД
     def create_connect(self):
-        self.connect = sqlite3.connect('db_telegram_bot.db')
+        self.connect = sqlite3.connect(DATABASE)
         self.cursor = self.connect.cursor()
 
     # Закрываем соединение с БД
@@ -42,7 +43,7 @@ class Users:
 class Chats:
     # Функция для соединения с БД
     def create_connect(self):
-        self.connect = sqlite3.connect('db_telegram_bot.db')
+        self.connect = sqlite3.connect(DATABASE)
         self.cursor = self.connect.cursor()
 
     # Закрываем соединение с БД
