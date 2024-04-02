@@ -3,48 +3,71 @@ import sqlite3
 
 class Users:
     # Функция для соединения с БД
-    def connect_to_db(self):
+    def create_connect(self):
         self.connect = sqlite3.connect('db_telegram_bot.db')
         self.cursor = self.connect.cursor()
 
     # Закрываем соединение с БД
-    def close(self):
+    def close_connect(self):
         if self.connect:
             self.connect.close()
 
 
 
-    # Получаем id всех пользователей, позже будем проверять наличие пользователя в этом списке
-    def get_all_id(self):
-        self.connect_to_db()
-        request = "SELECT user_id FROM users"
-        result = self.cursor.execute(request).fetchall()
-        self.close()
-
-        return [i[0] for i in result]
-
     # Добавляем нового пользователя
-    def add_id_to_db(self, user_id, sex, age):
-        self.connect_to_db()
-        request = "INSERT INTO users(user_id, sex, age) VALUES(?, ?, ?)"
-        self.cursor.execute(request, (user_id, sex, age))
+    def put(self, user_id, gender, age):
+        self.create_connect()
+        self.cursor.execute(f"INSERT INTO users(id, gender, age) VALUES({user_id}, {gender}, {age})")
         self.connect.commit()
-        self.close()
-    
-
-
-    # Получаем заданное поле по пользователю
-    def get_field(self, user_id, field):
-        self.connect_to_db()
-        request = f"SELECT {field} FROM users WHERE user_id=?"
-        result = self.cursor.execute(request, (user_id,)).fetchone()
-        self.close()
-        return result[0]
+        self.close_connect()
 
     # Меняем значение поля
-    def set_field(self, user_id, field, value):
-        self.connect_to_db()
-        request = f"UPDATE users SET {field}=? WHERE user_id=?"
-        self.cursor.execute(request, (value, user_id))
+    def post(self, user_id, field, value):
+        self.create_connect()
+        self.cursor.execute(f"UPDATE users SET {field}={value} WHERE id={user_id}")
         self.connect.commit()
-        self.close()
+        self.close_connect()
+
+    # Получаем заданное поле по пользователю
+    def get(self, user_id, field = "id"):
+        self.create_connect()
+        txt = ""
+        if user_id is not None:
+            txt = f" WHERE id={user_id}"
+        result = self.cursor.execute(f"SELECT {field} FROM users{txt}")
+        self.close_connect()
+        return result
+
+
+class Chats:
+    # Функция для соединения с БД
+    def create_connect(self):
+        self.connect = sqlite3.connect('db_telegram_bot.db')
+        self.cursor = self.connect.cursor()
+
+    # Закрываем соединение с БД
+    def close_connect(self):
+        if self.connect:
+            self.connect.close()
+
+
+
+    # Добавляем новый чат в базу
+    def put(self, user_id, partner_user_id):
+        self.create_connect()
+        self.cursor.execute(f"INSERT INTO chats(user_id, partner_user_id) VALUES({user_id}, {partner_user_id})")
+        self.connect.commit()
+        self.close_connect()
+
+    # Получаем заданное поле по пользователю
+    def get(self, user_id, field):
+        self.create_connect()
+        result = self.cursor.execute(f"SELECT {field} FROM chats WHERE id={user_id}")
+        self.close_connect()
+        return result
+    
+    # Удаляем чат из базы
+    def delete(self, user_id):
+        self.create_connect
+        self.cursor.execute(f"DELETE FROM chats WHERE user_id={user_id}")
+        self.close_connect

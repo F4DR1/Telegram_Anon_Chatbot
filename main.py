@@ -1,68 +1,93 @@
 # -*- coding: utf-8 -*-
 
-from email import message
 from telebot.async_telebot import AsyncTeleBot
 from telebot.async_telebot import types
 import asyncio
+import random
 
 from config import TOKEN
+from keyboard import Buttons
 from database import Users
-
-from atexit import register
-from cgitb import text
-from tabnanny import check
-from unicodedata import name
-from xml.dom.domreg import registered
-from random import randint
-
-
-import datetime
+from database import Chats
 
 
 globalVar = {}
 
 
-
+# Сам бот
 bot = AsyncTeleBot(TOKEN, parse_mode="HTML")
 
 
+
+# -------------------- СООБЩЕНИЯ --------------------
+# Отправить сообщение пользователю
+async def send_message(text, chat_id, message_id = None, keyboard = None):
+	if message_id == None:
+		await bot.send_message(chat_id, text, reply_markup = keyboard)
+	else:
+		await bot.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
+
+# Общение с собеседником
+async def communication_partner(message, link = False):
+	# Проверка на регистрацию
+	user_registered = await check_register(message.chat.id)
+	if not user_registered:
+		await register(message)
+	else:
+		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
+		if partner[0] is None:
+			await send_message("❌ У вас нет собеседников, кому вы могли бы отправить сообщение!", message.chat.id)
+		else:
+			if link:
+				text = "❌ У вас нет имени пользователя!"
+				if message.from_user.username is not None:
+					partner_text = f"🔗 Ссылка на собеседника: @{message.from_user.username}"
+					await send_message(partner_text, partner)
+					text = "✅ Ссылка успешно отправлена собеседнику!"
+				await send_message(text, message.chat.id)
+			else:
+				await send_message(message.text, partner)
+# ----------------------------------------
+
+
+
+# -------------------- КОМАНДЫ --------------------
 # Команда /start
 @bot.message_handler(commands=["start"])
 async def send_welcome(message):
-	user_registered = await check_user_in_globalVar(message.chat.id)
-
-	text = message.from_user.full_name + ", добро пожаловать в наш анонимный чат!"
-
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
 	if not user_registered:
-		await send_message(text, message.chat.id)
+		await send_message(f"{message.from_user.full_name}, добро пожаловать в наш анонимный чат!", message.chat.id)
 		await register(message)
 	else:
-		await search_interlocutor(message)
-
+		await start_search_partner(message)
 
 # Команда /stop
 @bot.message_handler(commands=["stop"])
 async def command_stop(message):
-	user_registered = await check_user_in_globalVar(message.chat.id)
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
 	if not user_registered:
 		await register(message)
 	else:
-		await stop_search_interlocutor(message)
-
+		await stop_search_partner(message)
 
 # Команда /link
 @bot.message_handler(commands=["link"])
 async def command_link(message):
-	user_registered = await check_user_in_globalVar(message.chat.id)
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
 	if not user_registered:
 		await register(message)
 	else:
-		await communication_interlocutor(message, True)
+		await communication_partner(message, True)
 
 # Команда /menu
 @bot.message_handler(commands=["menu"])
 async def command_menu(message):
-	user_registered = await check_user_in_globalVar(message.chat.id)
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
 	if not user_registered:
 		await register(message)
 	else:
@@ -71,293 +96,92 @@ async def command_menu(message):
 # Команда /help
 @bot.message_handler(commands=["help"])
 async def command_help(message):
-	user_registered = await check_user_in_globalVar(message.chat.id)
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
 	if not user_registered:
 		await register(message)
 	else:
 		await help(message)
 
-
-
+# Все остальные сообщения
 @bot.message_handler(content_types=["text"])
 async def messages(message):
-	await communication_interlocutor(message)
-
-
-
-
-
-
-
-
-
-# Клавиатура
-async def search_dialog():
-	keyboard = types.InlineKeyboardMarkup();
-
-	# Кнопки
-	key_stop_search_interlocutor = types.InlineKeyboardButton("❌ Остановить диалог ❌",
-		callback_data = "stop_search_interlocutor")
-	
-	# Добавляем кнопки в клавиатуру
-	keyboard.add(key_stop_search_interlocutor)
-
-	txt = "Собеседник найден. Общайтесь!"
-	global globalVar
-
-
-
-	while True:
-		all_id = Users().get_all_id()
-		ids_searchs = []
-
-
-		# --------------- Перебираем всех пользователей, кто сейчас в поиске ---------------
-		for id in all_id:
-			user_registered = await check_user_in_globalVar(id)
-			if globalVar[id]["user_status"] == "Search":
-				ids_searchs.append(id)
-		# ------------------------------------------------------------------------------------------
-		
-		
-		# --------------- Если в поиске два и больше человек ---------------
-		if len(ids_searchs) >= 2:
-			rnd1 = randint(0, (len(ids_searchs)-1))
-			rnd2 = randint(0, (len(ids_searchs)-1))
-			if rnd2 == rnd1:
-				while rnd2 == rnd1:
-					rnd2 = randint(0, (len(ids_searchs)-1))
-			
-			id1 = ids_searchs[rnd1]
-			id2 = ids_searchs[rnd2]
-
-			if globalVar[id1]["user_status"] == "Search" and globalVar[id2]["user_status"] == "Search":
-				Users().set_field(id1, "interlocutor", id2)
-				Users().set_field(id2, "interlocutor", id1)
-
-				globalVar[id1]["user_status"] = "Message"
-				globalVar[id2]["user_status"] = "Message"
-
-				await send_message(txt, id1, None, keyboard)
-				await send_message(txt, id2, None, keyboard)
-		# ---------------------------------------------------------------------------
-
-		await asyncio.sleep(1)
-
-
-
-
-
-
-async def communication_interlocutor(message, link = False):
-	user_registered = await check_user_in_globalVar(message.chat.id)
-	if user_registered:
-		interlocutor = Users().get_field(message.chat.id, "interlocutor")
-		if interlocutor == None:
-			await send_message("❌ У вас нет собеседников, кому вы могли бы отправить сообщение!",
-				message.chat.id)
-		else:
-			text = ""
-			if link:
-				txt = "❌ У вас нет имени пользователя!"
-				if message.from_user.username != None:
-					text = "🔗 Ссылка на собеседника: " + "@" + message.from_user.username
-					txt = "✅ Ссылка успешно отправлена собеседнику!"
-				await send_message(txt, message.chat.id)
-			else:
-				text = message.text
-			
-			await send_message(text, interlocutor)
-	else:
-		await register(message)
-
-
-
-
-
-
-
-
-
-
-async def send_message(text, chat_id, message_id = None, keyboard = None):
-	if message_id == None:
-		await bot.send_message(chat_id, text, reply_markup = keyboard)
-	else:
-		await bot.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
-
-
-
-
-
-
-
-# -------------------- База Данных --------------------
-async def db_request_sex(user_id):
-	# Делаем запрос данных
-	sex = Users().get_field(user_id, "sex")
-	
-	# Пол
-	if sex == "sex_male":
-		sex = "Мужской"
-	else:
-		sex = "Женский"
-	
-	text = "\n🚻 Пол: <i>" + sex + "</i>"
-
-	return text, sex
-
-async def db_request_age(user_id):
-	age = Users().get_field(user_id, "age")
-
-	# Возраст
-	if age == "age_child":
-		age = "До 14 лет"
-	elif age == "age_teen":
-		age = "14-17 лет"
-	else:
-		age = "18 лет и старше"
-	
-	text = "\n🔞 Возраст: <i>" + age + "</i>"
-
-	return text, age
-
-async def db_request_premium(user_id):
-	premium = Users().get_field(user_id, "premium")
-	premium_time = Users().get_field(user_id, "premium_time")
-
-
-	txt = ""
-	if premium == True:
-		premium = "Есть"
-
-		txt = "\nВремя действия до: <i>"
-		if premium_time == None:
-			txt = txt + "пожизнено</i>"
-		else:
-			spl_dt = premium_time.split()
-			spl_ymd = spl_dt[0].split("-")
-			spl_hms = spl_dt[1].split(":")
-
-			txt = txt + f"{spl_ymd[2]}-{spl_ymd[1]}-{spl_ymd[0]} {spl_hms[0]}:{spl_hms[1]}:{spl_hms[2]}</i>"
-	else:
-		premium = "Нет"
-	
-	text = "\n\n⚜️ Премиум: <i>" + premium + "</i>" + txt
-
-	return text, premium, premium_time
-
-async def db_request_admin(user_id):
-	admin = Users().get_field(user_id, "admin")
-	admin_lvl = Users().get_field(user_id, "admin_lvl")
-
-	if admin_lvl == "trainee":
-		admin_lvl = "Стажёр"
-	elif admin_lvl == "junior":
-		admin_lvl = "Младший администратор"
-	elif admin_lvl == "senior":
-		admin_lvl = "Старший администратор"
-	elif admin_lvl == "head":
-		admin_lvl = "Глава администраторов"
-	elif admin_lvl == "premium":
-		admin_lvl = "premium персона"
-	elif admin_lvl == "owner":
-		admin_lvl = "Владелец"
-	else:
-		admin_lvl = "Нет"
-
-	text = "\n\n👑 Администратор\nУровень: <i>" + admin_lvl + "</i>"
-
-	return text, admin, admin_lvl
+	await communication_partner(message)
 # ----------------------------------------
 
 
 
-
-
-# -------------------- Кнопки под сообщениями --------------------
+# -------------------- ОБРАБОТЧИК КНОПОК --------------------
 @bot.callback_query_handler(func = lambda call: True)
 async def callback_worker(call):
-	user_registered = await check_user_in_globalVar(call.message.chat.id)
+	# Проверка регистрации
+	user_registered = await check_register(call.message.chat.id)
+	keyboard = types.InlineKeyboardMarkup()
 
-	# ---------------------------------------- РЕГИСТРАЦИЯ ----------------------------------------
-	if call.data == "sex_male" or call.data == "sex_female":										# При изменении пола
-		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
+
+	# ----- Изменение данных -----
+	# При изменении пола
+	if call.data == "gender_male" or call.data == "gender_female" or call.data == "gender_other":
 		text = ""
 		if not user_registered:
-			globalVar[call.message.chat.id]["sex"] = call.data
-
-			keyboard = await kb_change_age(keyboard)
-
+			globalVar[call.message.chat.id]["gender"] = call.data
 			text = "Теперь выбери свой возраст (можно сменить в любой момент в настройках):"
+			keyboard = await Buttons().change_age(keyboard)
 		else:
-			Users().set_field(call.message.chat.id, "sex", call.data)
-
-			keyboard = await kb_to_menu(keyboard)
-
+			Users().post(call.message.chat.id, "gender", call.data)
 			text = "Ваш пол был изменён!"
-
+			keyboard = await Buttons().to_menu(keyboard)
 		await send_message(text, call.message.chat.id, call.message.message_id, keyboard)
-	elif call.data == "age_child" or call.data == "age_teen" or call.data == "age_adult":			# При изменении возраста
-		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
+	
+	# При изменении возраста
+	elif call.data == "age_child" or call.data == "age_teen" or call.data == "age_adult":
 		text = ""
 		if not user_registered:
+			# Вносим данные
 			globalVar[call.message.chat.id]["age"] = call.data
-			Users().add_id_to_db(call.message.chat.id,
-				globalVar[call.message.chat.id]["sex"], globalVar[call.message.chat.id]["age"])
-
-			# Кнопки
-			key_start_search_interlocutor = types.InlineKeyboardButton(text = "🔍 Поиск собеседника",
-				callback_data = "start_search_interlocutor")
-
-			# Добавляем кнопки в клавиатуру
-			keyboard.add(key_start_search_interlocutor)
-
-			keyboard = await kb_to_menu(keyboard)
-
+			Users().put(call.message.chat.id, globalVar[call.message.chat.id]["gender"], globalVar[call.message.chat.id]["age"])
 			text = "Поздравляем с регистрацией! Теперь вы можете общаться в нашем чате."
+			keyboard = await Buttons().start_search(keyboard)
+			keyboard = await Buttons().to_menu(keyboard)
 		else:
-			Users().set_field(call.message.chat.id, "age", call.data)
-
-			keyboard = await kb_to_menu(keyboard)
-
+			Users().post(call.message.chat.id, "age", call.data)
 			text = "Ваш возраст был изменён."
-
+			keyboard = await Buttons().to_menu(keyboard)
 		await send_message(text, call.message.chat.id, call.message.message_id, keyboard)
-	elif call.data == "end_reg":
-		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-	# --------------------------------------------------------------------------------
+	# ---------------
 
-
-
-	# Поиск
-	elif call.data == "start_search_interlocutor":													# Поиск собеседника
-		await search_interlocutor(call.message, call.message.message_id)
-	elif call.data == "stop_search_interlocutor":													# Отмена поиска собеседника
-		await stop_search_interlocutor(call.message, call.message.message_id)
 	
 
-	# Менюшные
-	elif call.data == "profile":																	# Профиль
+	# ----- Меню -----
+	# Профиль
+	elif call.data == "profile":
 		await profile(call.message, call.message.message_id)
+	# Помощь
 	elif call.data == "help":
 		await help(call.message, call.message.message_id)
-	elif call.data == "premium":
-		await premium(call.message, call.message.message_id)
-	elif call.data == "get_premium":
-		await give_premium(call.message.chat.id, 30, call.message, call.message.message_id)
+	# ---------------
+	
 	
 
+	# ----- Поиск собеседника -----
+	# Поиск
+	elif call.data == "start_search_partner":
+		await start_search_partner(call.message, call.message.message_id)
+	# Отмена поиска
+	elif call.data == "stop_search_partner":
+		await stop_search_partner(call.message, call.message.message_id)
+	# ---------------
+	
 
-	# Другое
-	elif call.data == "to_menu":																	# Возврат в меню
+	# Возврат в меню
+	elif call.data == "to_menu":
 		await menu(call.message, call.message.message_id)
-# ----------------------------------------------------------------------
+# ----------------------------------------
 
 
 
-
-
+# -------------------- ФУНКЦИИ --------------------
+# Помощь
 async def help(message, message_id = None):
 	text = 	"<b>Основные команды:</b>\
 			\n/start - начать поиск собеседника\
@@ -367,312 +191,194 @@ async def help(message, message_id = None):
 			\n/menu - меню\
 			\n/help - список команд"
 	
-	await send_message(text, message.chat.id, message_id)
+	# Клавиатура
+	keyboard = await Buttons().to_menu(types.InlineKeyboardMarkup())
+	await send_message(text, message.chat.id, message_id, keyboard)
 
+
+# Меню
 async def menu(message, message_id = None):
-	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
+	# Клавиатура
+	keyboard = await Buttons().start_search(types.InlineKeyboardMarkup())
+	keyboard.add(types.InlineKeyboardButton(text = "👤 Ваш профиль", callback_data = "profile"))
+	keyboard.add(types.InlineKeyboardButton(text = "📙 Помощь", callback_data = "help"))
 	
-	# Кнопки
-	key_start_search_interlocutor = types.InlineKeyboardButton(text = "🔍 Поиск собеседника",
-		callback_data = "start_search_interlocutor")
-	key_profile = types.InlineKeyboardButton(text = "👤 Ваш профиль",
-		callback_data = "profile")
-	key_help = types.InlineKeyboardButton(text = "📙 Помощь",
-		callback_data = "help")
-	key_premium = types.InlineKeyboardButton(text = "⚜️ Премиум",
-		callback_data = "premium")
-
-	# Добавляем кнопки в клавиатуру
-	keyboard.add(key_start_search_interlocutor)
-	keyboard.add(key_profile)
-	keyboard.add(key_help)
-	keyboard.add(key_premium)
-	
-	text = "🗂 <b>Меню</b> 🗂\n\nВыбери действие:"
-
-	await send_message(text, message.chat.id, message_id, keyboard)
-
-async def premium(message, message_id = None):
-	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-	
-	txt_premium, premium, premium_time = await db_request_premium(message.chat.id)
-	txt_admin, admin, admin_lvl = await db_request_admin(message.chat.id)
-	
-	text = "🗂 <b>Премиум</b> 🗂"
-
-	if admin:
-		text = text + txt_admin
-	else:
-		if premium == "Есть":
-			text = text + txt_premium
-		else:
-			text = text + "\n\nУ вас нет премиум статуса.\nПолучить?."
-
-			# Кнопки
-			key_get_premium = types.InlineKeyboardButton(text = "⚜️ Получить!", callback_data = "get_premium")
-
-			# Добавляем кнопки в клавиатуру
-			keyboard.add(key_get_premium)
-
-
-
-	keyboard = await kb_to_menu(keyboard)
+	text = "🗂 <b>Меню</b> 🗂\n\nВыберите действие:"
 	await send_message(text, message.chat.id, message_id, keyboard)
 
 
-
+# Профиль
 async def profile(message, message_id = None):
-	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-
-	text = "💼 <b>Профиль</b> 💼\n"
-
-	txt_sex, sex = await db_request_sex(message.chat.id)
+	txt_gender, gender = await db_request_gender(message.chat.id)
 	txt_age, age = await db_request_age(message.chat.id)
-	txt_premium, premium, premium_time = await db_request_premium(message.chat.id)
-	txt_admin, admin, admin_lvl = await db_request_admin(message.chat.id)
 
+	text = f"💼 <b>Профиль</b> 💼\n{txt_gender}\n{txt_age}"
 
-	text = text + txt_sex + txt_age
-	if admin:
-		text = text + txt_admin
-	else:
-		text = text + txt_premium
-
-	keyboard = await kb_to_menu(keyboard)
+	# Клавиатура
+	keyboard = await Buttons().to_menu(types.InlineKeyboardMarkup())
 	await send_message(text, message.chat.id, message_id, keyboard)
+# ----------------------------------------
 
 
 
-async def give_premium(user, time, message, message_id = None):
-	user_registered = await check_user_in_globalVar(user)
-	if user_registered:
-		keyboard = types.InlineKeyboardMarkup();		# клавиатура
-		txt_premium, premium, premium_time = await db_request_premium(user)
-		txt_admin, admin, admin_lvl = await db_request_admin(user)
+# -------------------- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ --------------------
+# Получить пол
+async def db_request_gender(user_id):
+	# Делаем запрос данных
+	result = Users().get(user_id, "gender").fetchone()
+	gender = result[0]
 
-
-		if premium_time != None:
-			spl_dt = premium_time.split()
-			spl_ymd = spl_dt[0].split("-")
-			spl_hms = spl_dt[1].split(":")
-
-			str_premium_time = f"{spl_ymd[2]}-{spl_ymd[1]}-{spl_ymd[0]} {spl_hms[0]}:{spl_hms[1]}:{spl_hms[2]}"
-
-
-		text = ""
-		if admin:
-			text = "У вас уже есть права администратора уровня: <i>" + admin_lvl + "</i>!"
-		else:
-			if premium == "Есть":
-				text - "У вас уже есть премиум до: <i>" + str_premium_time + "</i>!"
-			else:
-				date = await now_date()
-
-				delta = datetime.timedelta(days = time)
-				need_date = date + delta
-
-				# Обновляем
-				Users().set_field(user, "premium", True)
-				Users().set_field(user, "premium_time", need_date)
-
-				if message.chat.id == user:
-					text = "Поздравляем с получением премиума на: <i>" + str(time) + " дней</i>!"
-				else:
-					text = "Пользователь с id \"<i>" + user + "</i>\" получил премиум на \"<i>" + str(time) + " дней</i>\"."
-					txt = "⚜️ Вы получили премиум статус на \"<i>" + str(time) +" дней</i>\" \
-						от администратора с уровнем \"<i>" + admin_lvl + "</i>\"!"
-					await send_message(txt, user)
-
-		keyboard = await kb_to_menu(keyboard)
-		await send_message(text, message.chat.id, message_id, keyboard)
+	# Пол
+	if gender == "gender_male":
+		gender = "Мужской"
+	elif gender == "gender_female":
+		gender = "Женский"
 	else:
-		text = "Пользователь с id \"<i>" + user + "</i>\" не зарегестрирован!"
-		await send_message(text, message.chat.id, message_id)
+		gender = "Другой"
+
+	text = f"\n🚻 Пол: <i>{gender}</i>"
+	return text, gender
+
+# Получить возраст
+async def db_request_age(user_id):
+	result = Users().get(user_id, "age").fetchone()
+	age = result[0]
+
+	# Возраст
+	if age == "age_child":
+		age = "До 14 лет"
+	elif age == "age_teen":
+		age = "14-17 лет"
+	else:
+		age = "18 лет и старше"
+
+	text = f"\n🔞 Возраст: <i>{age}</i>"
+	return text, age
+# ----------------------------------------
 
 
 
-
+# -------------------- РЕГИСТРАЦИЯ --------------------
 # Проверка регистрации
 async def check_register(chat_id):
 	user_registered = False
-	all_id = Users().get_all_id()
-	for id in all_id:
-		if id == chat_id:
-			user_registered = True
-			break
+	result = Users().get(chat_id).fetchone()
+	if result[0] is not None:
+		user_registered = True
 	return user_registered
-#
 
-# -------------------- РЕГИСТРАЦИЯ --------------------
+# Регистрация
 async def register(message, message_id = None):
-	text = "🔒 Сначала нужно пройти регистрацию!\
-		\n\nВыберите ваш пол (можно сменить в любой момент в настройках):"
-
-	keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-
-	keyboard = await kb_change_sex(keyboard)
-
+	globalVar[message.chat.id] = {"gender":"None", "age":"None"}
+	text = "🔒 Сначала нужно пройти регистрацию!\n\nВыберите ваш пол (можно сменить в любой момент в настройках):"
+	keyboard = await Buttons().change_gender(types.InlineKeyboardMarkup())
 	await send_message(text, message.chat.id, message_id, keyboard)
-# ----------------------------------------------------------------------
+# ----------------------------------------
 
 
 
 
 
-async def search_interlocutor(message, message_id = None):
-	user_registered = await check_user_in_globalVar(message.chat.id)
-	if user_registered:
-		interlocutor = Users().get_field(message.chat.id, "interlocutor")
-		
-		text = ""
+
+
+
+
+# -------------------- ПОИСК --------------------
+# Поиск собеседника
+async def start_search_partner(message, message_id = None):
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
+	if not user_registered:
+		await register(message)
+	else:
+		text = "Поиск собеседника уже идёт!\nОтменить?"
 		btn_txt = "❌ Отменить поиск ❌"
 
-		if interlocutor == None:
-			if globalVar[message.chat.id]["user_status"] == "None":
-				globalVar[message.chat.id]["user_status"] = "Search"
-				text = "🔍 Ищем собеседника..."
-			elif globalVar[message.chat.id]["user_status"] == "Search":
-				text = "Поиск собеседника уже идёт!\nОтменить?"
-		else:
-			btn_txt = "❌ Остановить диалог ❌"
+		searchStatus = Users().get(message.chat.id, "search").fetchone()
+		if searchStatus[0] == 0:
+			Users().post(message.chat.id, "search", 1)
+			text = "🔍 Ищем собеседника..."
+		
+		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
+		if partner[0] is not None:
 			text = "Вы уже в диалоге. Остановить его?"
-		
+			btn_txt = "❌ Остановить диалог ❌"
 
-		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-
-		# Кнопки
-		key_stop_search_interlocutor = types.InlineKeyboardButton(text = btn_txt,
-			callback_data = "stop_search_interlocutor")
-		
-		# Добавляем кнопки в клавиатуру
-		keyboard.add(key_stop_search_interlocutor)
-		
+		# Клавиатура
+		keyboard = await Buttons().stop_search(types.InlineKeyboardMarkup(), btn_txt)
 		await send_message(text, message.chat.id, message_id, keyboard)
-	else:
+
+# Остановить диалог/поиск собеседника
+async def stop_search_partner(message, message_id = None):
+	# Проверка регистрации
+	user_registered = await check_register(message.chat.id)
+	if not user_registered:
 		await register(message)
+	else:
+		text = "У вас нет активного поиска / диалога!"
+		
+		searchStatus = Users().get(message.chat.id, "search").fetchone()
+		if searchStatus[0] == 1:
+			Users().post(message.chat.id, "search", 0)
+			text = "❌ Поиск собеседника остановлен!"
 
-async def stop_search_interlocutor(message, message_id = None):
-	user_registered = await check_user_in_globalVar(message.chat.id)
-	if user_registered:
-		interlocutor = Users().get_field(message.chat.id, "interlocutor")
-
-		keyboard = types.InlineKeyboardMarkup();		# Клавиатура
-
-		# Кнопки
-		key_search = types.InlineKeyboardButton(text = "🔍 Начать поиск", callback_data = "start_search_interlocutor")
-
-		# Добавляем кнопки в клавиатуру
-		keyboard.add(key_search)
-
-		keyboard = await kb_to_menu(keyboard)
-
-		text = ""
-		if interlocutor == None:
-			if globalVar[message.chat.id]["user_status"] == "None":
-				text = "У вас нет активного поиска / диалога!"
-			elif globalVar[message.chat.id]["user_status"] == "Search":
-				globalVar[message.chat.id]["user_status"] = "None"
-				text = "❌ Поиск собеседника остановлен!"
-		else:
-			# Останавливаем диалог собеседнику и пользователю
-			Users().set_field(message.chat.id, "interlocutor", None)
-			Users().set_field(interlocutor, "interlocutor", None)
-
-			globalVar[message.chat.id]["user_status"] = "None"
-			globalVar[interlocutor]["user_status"] = "None"
-
-
+		partner = Chats().get(message.chat.id, "partner_user_id").fetchone()
+		if partner[0] is not None:
+			Chats().delete(message.chat.id)
+			Chats().delete(partner[0])
+			await send_message("❌ Собеседник остановил диалог.", partner[0], None, keyboard)
 			text = "❌ Диалог остановлен!"
-			await send_message("❌ Собеседник остановил диалог.", interlocutor, None, keyboard)
-		
+
+		# Клавиатура
+		keyboard = await Buttons().start_search(types.InlineKeyboardMarkup())
+		keyboard = await Buttons().to_menu(keyboard)
 		await send_message(text, message.chat.id, message_id, keyboard)
-	else:
-		await register(message)
+# ----------------------------------------
 
-
-
-
-
-async def kb_to_menu(keyboard):
-	# Кнопки
-	key_to_menu = types.InlineKeyboardButton(text = "⬅️ Вернуться в меню", callback_data = "to_menu")
-
-	# Добавляем кнопки в клавиатуру
-	keyboard.add(key_to_menu)
-
-	return keyboard
-
-
-async def kb_change_sex(keyboard):
-	# Кнопки
-	key_sex_male = types.InlineKeyboardButton(text = "🚹 Мужской 🚹", callback_data = "sex_male")
-	key_sex_female= types.InlineKeyboardButton(text = "🚺 Женский 🚺", callback_data = "sex_female")
-
-	# Добавляем кнопки в клавиатуру
-	keyboard.add(key_sex_male)
-	keyboard.add(key_sex_female)
-
-	return keyboard
-
-async def kb_change_age(keyboard):
-	# Кнопки
-	key_age_child = types.InlineKeyboardButton(text = "До 14 лет", callback_data = "age_child")
-	key_age_teen = types.InlineKeyboardButton(text = "14-17 лет", callback_data = "age_teen")
-	key_age_adult = types.InlineKeyboardButton(text = "18 лет и старше", callback_data = "age_adult")
-
-	# Добавляем кнопки в клавиатуру
-	keyboard.add(key_age_child)
-	keyboard.add(key_age_teen)
-	keyboard.add(key_age_adult)
-
-	return keyboard
-
-
-
-
-
-
-
-async def check_user_in_globalVar(user_id):
-	in_base = False
-	for id in globalVar:
-		if id == user_id:
-			in_base = True
-			break
+# Поиск собеседников (отдельная задача, работающая всегда)
+async def search_partners():
+	keyboard = Buttons().stop_search(types.InlineKeyboardMarkup(), "❌ Остановить диалог ❌")
+	txt = "Собеседник найден. Общайтесь!"
 	
-	if not in_base:
-		globalVar[user_id] = {"sex":"None", "age":"None", "user_status":"None",}
-	
-	user_registered = await check_register(user_id)
-	if user_registered:
-		interlocutor = Users().get_field(user_id, "interlocutor")
-		if interlocutor != None:
-			globalVar[user_id]["user_status"] = "Message"
-	
-	return user_registered
+	while True:
+		await asyncio.sleep(1)
 
+		# Получаем список статусов поиска пользователей
+		searchesUsers = Users().get(None, "id, search").fetchall()
+		if len(searchesUsers) == 0:
+			continue
 
+		# Перебираем всех пользователей, кто сейчас в поиске
+		searchQueue = []
+		for user in searchesUsers:
+			if user[1] is True:
+				searchQueue.append(user[0])
+		
+		
+		# Если в поиске два и больше человек - соединяем
+		if len(searchQueue) >= 2:
+			# Рандомно выбираем двух человек для беседы
+			users = random.sample(searchQueue, 2)
+			
+			# Ещё раз на всякий случай проверяем статус поиска
+			searchStatus1 = Users().get(users[0], "search").fetchone()
+			searchStatus2 = Users().get(users[1], "search").fetchone()
+			if searchStatus1[0] == 1 and searchStatus2[0] == 1:
+				Users().post(users[0], "search", 0)
+				Users().post(users[1], "search", 0)
 
-async def now_date():
-	now = datetime.datetime.now()
-
-	date = datetime.date(now.year, now.month, now.day)
-	time = datetime.time(now.hour, now.minute)
-	now_date = datetime.datetime.combine(date, time)
-
-	return now_date
-
-
-
-
+				Chats().put(users[0], users[1])
+				Chats().put(users[1], users[0])
+				await send_message(txt, users[0], None, keyboard)
+				await send_message(txt, users[1], None, keyboard)
 
 
 async def main():
-	task1 = asyncio.create_task(bot.polling())
-	task2 = asyncio.create_task(search_dialog())
-
-	await task1
-	await task2
+	# Стартуем бота
+	await asyncio.create_task(bot.polling())
+	# Стартуем поиск собеседников
+	await asyncio.create_task(search_partners())
+	print("Бот успешно запущен!")
 
 
 asyncio.run(main())
