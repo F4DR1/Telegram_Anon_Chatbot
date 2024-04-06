@@ -1,5 +1,16 @@
+import json
 import os
+from telebot.async_telebot import AsyncTeleBot
 
 
-TOKEN = "7155394756:AAHJNgkyxpXTFhAg5ANG31hRGqf8XLsCJhc"
-DATABASE = os.path.dirname(os.path.abspath(__file__)) + "\\" + "telegram_bot.db"
+with open('data\\localization.json', 'r', encoding='utf-8') as file:
+    LOCALIZATION = json.load(file)
+
+with open('data\\bot_data.json', 'r', encoding='utf-8') as file:
+    DATA = json.load(file)
+
+BOT = AsyncTeleBot(DATA["token"], parse_mode="HTML", protect_content=True)
+DATABASE = os.path.dirname(os.path.abspath(__file__)) + "\\" + DATA["database"]
+CHANNEL = DATA["channel"]
+
+GLOBALDATA = {}
