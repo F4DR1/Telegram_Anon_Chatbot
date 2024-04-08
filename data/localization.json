@@ -8,6 +8,7 @@
         "register_age": "🔞 Теперь выберите свой возраст (можно сменить в любой момент в настройках):",
         "register_finish": "🔓 Поздравляем с регистрацией!\nТеперь вы можете общаться в нашем чате.",
         "select_action": "Выберите действие:",
+        "edit_reply_keyboard": "Клавиатура отредактирована",
         
 
         "search_none": "У вас нет активного поиска / диалога!",
@@ -47,14 +48,18 @@
         "profile": "👤 Ваш профиль 👤",
         "help": "📙 Помощь 📙",
         "premium": "⚜️ Премиум ⚜️",
+        "search_settings": "⚙️ Настройки поиска ⚙️",
 
         "language_text": "Язык",
-        "language_select": "🌐 Выберите пол:",
+        "language_select": "🌐 Выберите язык:",
         "language_edited": "✅ Ваш язык был успешно изменён!",
+        "language_search_edited": "✅ Язык поиска был успешно изменён!",
 
         "gender": "Пол",
         "gender_select": "🚻 Выберите пол:",
         "gender_edited": "✅ Ваш пол был успешно изменён!",
+        "gender_search_edited": "✅ Пол поиска был успешно изменён!",
+        "gender_all": "Любой",
         "gender_male": "Мужской",
         "gender_female": "Женский",
         "gender_other": "Другой",
@@ -62,6 +67,8 @@
         "age": "Возраст",
         "age_select": "🔞 Выберите возраст:",
         "age_edited": "✅ Ваш возраст был успешно изменён!",
+        "age_search_edited": "✅ Возраст поиска был успешно изменён!",
+        "age_all": "Любой",
         "age_child": "До 14 лет",
         "age_teen": "14-17 лет",
         "age_adult": "18 лет и старше",
@@ -80,13 +87,16 @@
 
 
         "forever": "Навсегда",
+        "any": "Любой",
 
 
+        "edit_language_button": "🌐 Изменить язык 🌐",
         "edit_gender_button": "🚻 Изменить пол 🚻",
         "edit_age_button": "🔞 Изменить возраст 🔞",
 
         "back_button": "⬅️ Назад",
         "default_to_profile_button": "⬅️ Вернуться в профиль",
+        "default_to_search_settings_button": "⬅️ Вернуться в настройки поиска",
         "default_to_menu_button": "⬅️ Вернуться в меню ",
         "to_menu_button": "🗂 В меню"
     },
@@ -99,6 +109,7 @@
         "register_age": "🔞 Now select your age (you can change it at any time in the settings):",
         "register_finish": "🔓 Congratulations on registering!\nNow you can chat in our chat.",
         "select_action": "Choose an action:",
+        "edit_reply_keyboard": "Keyboard edited",
         
 
         "search_none": "You have no active search / dialog!",
@@ -138,14 +149,18 @@
         "profile": "👤 Your Profile 👤",
         "help": "📙 Help 📙",
         "premium": "⚜️ Premium ⚜️",
+        "search_settings": "⚙️ Search Settings ⚙️",
 
         "language_text": "Language",
         "language_select": "🌐 Select language:",
         "language_edited": "✅ Your language has been successfully changed!",
+        "language_search_edited": "✅ The search language has been successfully changed!",
 
         "gender": "Gender",
         "gender_select": "🚻 Select gender:",
         "gender_edited": "✅ Your gender has been successfully changed!",
+        "gender_search_edited": "✅ The search gender has been successfully changed!",
+        "gender_all": "Any",
         "gender_male": "Male",
         "gender_female": "Female",
         "gender_other": "Other",
@@ -153,6 +168,8 @@
         "age": "Age",
         "age_select": "🔞 Select age:",
         "age_edited": "✅ Your age has been successfully changed!",
+        "age_search_edited": "✅ The search age has been successfully changed!",
+        "age_all": "Any",
         "age_child": "Up to 14 years old",
         "age_teen": "14-17 years old",
         "age_adult": "18 years and older",
@@ -171,13 +188,16 @@
 
 
         "forever": "Forever",
+        "any": "Any",
 
 
+        "edit_language_button": "🌐 Change language 🌐",
         "edit_gender_button": "🚻 Change gender 🚻",
         "edit_age_button": "🔞 Change age 🔞",
 
         "back_button": "⬅️ Back",
         "default_to_profile_button": "⬅️ Return to profile",
+        "default_to_search_settings_button": "⬅️ Return to search settings",
         "default_to_menu_button": "⬅️ Return to menu ",
         "to_menu_button": "🗂 To menu"
     }

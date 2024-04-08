@@ -11,41 +11,32 @@ import modules.database as database
 class Default:
     #region -------------------- СООБЩЕНИЯ --------------------
     # Отправить сообщение пользователю
-    async def send_message(self, text, chat_id, message_id = None, keyboard = None, delete = False):
-        msg = None
+    async def send_message(self, text, chat_id, message_id = None, keyboard = None):
         if message_id == None:
-            msg = await BOT.send_message(chat_id, text, reply_markup = keyboard)
+            await BOT.send_message(chat_id, text, reply_markup = keyboard)
         else:
-            msg = await BOT.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
-        if msg is not None and delete is True:
-            await BOT.delete_message(chat_id, msg.message_id)
+            await BOT.edit_message_text(text, chat_id, message_id, reply_markup = keyboard)
 
     # Общение с собеседником
     async def communication_partner(self, message, link = False):
-        # Проверка на регистрацию
-        user_registered = await AllUsers().check_register(message.chat.id)
-        if not user_registered:
-            await AllUsers().register(message)
+        partner = database.Chats().get(message.chat.id, "partner_user_id").fetchone()
+        if partner is None:
+            user_language = await self.get_language(message.chat.id)
+            keyboard = await InlineButtons().start_search(user_language, types.InlineKeyboardMarkup())
+            keyboard = await InlineButtons().to_menu(user_language, keyboard)
+            await self.send_message(LOCALIZATION[user_language]['send_message_partner_none'], message.chat.id, None, keyboard)
         else:
-            partner = database.Chats().get(message.chat.id, "partner_user_id").fetchone()
-            if partner is None:
-                user_language = await self.get_language(message.chat.id)
-                keyboard = await InlineButtons().start_search(user_language, types.InlineKeyboardMarkup())
-                keyboard = await InlineButtons().to_menu(user_language, keyboard)
-                await self.send_message(LOCALIZATION[user_language]['send_message_partner_none'], message.chat.id, None, keyboard)
+            if not link:
+                await BOT.copy_message(partner[0], message.chat.id, message.message_id)
             else:
-                if not link:
-                    await BOT.copy_message(partner[0], message.chat.id, message.message_id)
-                else:
-                    text = LOCALIZATION[user_language]['username_none']
-                    if message.from_user.username is not None:
-                        partner_text = f"🔗 Ссылка на собеседника: @{message.from_user.username}"
-                        await self.send_message(partner_text, partner)
-                        text = LOCALIZATION[user_language]['username_send']
-                    await self.send_message(text, message.chat.id)
+                text = LOCALIZATION[user_language]['username_none']
+                if message.from_user.username is not None:
+                    partner_text = f"🔗 Ссылка на собеседника: @{message.from_user.username}"
+                    await self.send_message(partner_text, partner)
+                    text = LOCALIZATION[user_language]['username_send']
+                await self.send_message(text, message.chat.id)
     #endregion ----------------------------------------
 
-    
     
     #region -------------------- ПОИСК --------------------
     # Поиск собеседника
@@ -120,29 +111,43 @@ class Default:
     #endregion ----------------------------------------
 
 
-
     #region -------------------- ЯЗЫК --------------------
     # Запрос языка
-    async def get_language(self, chat_id):
+    async def get_language(self, chat_id, convert_to_code = True, search = False):
         language = None
-        if len(GLOBALDATA) != 0 and GLOBALDATA[chat_id] is not None:
-            language = GLOBALDATA[chat_id]['language']
+        user_registered = await AllUsers().check_register(chat_id)
+        if not user_registered:
+            if len(GLOBALDATA) != 0 and GLOBALDATA[chat_id] is not None:
+                language = GLOBALDATA[chat_id]['language']
         else:
-            user_registered = await AllUsers().check_register(chat_id)
-            if user_registered:
-                language = database.Users().get(chat_id, "language")
-        language = await self.language_to_code(language)
+            if search:
+                language = database.Searches().get(chat_id, "language").fetchone()
+            else:
+                language = database.Users().get(chat_id, "language").fetchone()
+            language = language[0]
+            
+        if convert_to_code is True:
+            language = await self.language_to_code(language)
         return language
     
     # Перевести название языка в его кодовую часть
     async def language_to_code(self, language):
-        if language is not None:
-            if language == "language_english":
-                language = "EN"
-            else:
-                language = "RU"
+        code = "RU"
+        if language == "language_english":
+            code = "EN"
+        return code
+    
+    # Перевести название языка в его название
+    async def language_name(self, user_language, language):
+        code = await self.language_to_code(language)
+        if language == "all":
+            language = LOCALIZATION[user_language]['any']
+        else:
+            language = LOCALIZATION[code]['language']
         return language
     #endregion ----------------------------------------
+
+
 
 
 
@@ -166,7 +171,6 @@ class AllUsers:
         await Default().send_message(text, message.chat.id, message_id, keyboard)
     #endregion ----------------------------------------
 
-    
 
     #region -------------------- ФУНКЦИИ --------------------
     # Помощь
@@ -201,15 +205,19 @@ class AllUsers:
     async def profile(self, message, message_id = None):
         user_language = await Default().get_language(message.chat.id)
 
+        # Получить язык в БД пользователя
+        language = await Default().get_language(message.chat.id, False)
+        # Получить название языка
+        language = await Default().language_name(user_language, language)
         gender = await self.db_request_gender(message.chat.id)
         age = await self.db_request_age(message.chat.id)
 
         text = f"<b>{LOCALIZATION[user_language]['profile']}</b>\n\
-            \n🆔 ID: <code>{message.chat.id}</code>\
+            \n🆔 <code>{message.chat.id}</code>\
+            \n🌐 {LOCALIZATION[user_language]['language_text']}: <i>{language}</i>\
             \n🚻 {LOCALIZATION[user_language]['gender']}: <i>{gender}</i>\
             \n🔞 {LOCALIZATION[user_language]['age']}: <i>{age}</i>"
 
-        # Клавиатура
         keyboard = await InlineButtons().edit_data(user_language, types.InlineKeyboardMarkup())
         keyboard = await InlineButtons().to_menu(user_language, keyboard)
         await Default().send_message(text, message.chat.id, message_id, keyboard)
@@ -228,42 +236,93 @@ class AllUsers:
         keyboard = await InlineButtons().to_menu(user_language, types.InlineKeyboardMarkup())
         await Default().send_message(text, message.chat.id, message_id, keyboard)
 
+    # Настройки поиска
+    async def search_settings(self, message, message_id = None):
+        user_language = await Default().get_language(message.chat.id)
+
+        # Получить язык в БД поиска
+        language = await Default().get_language(message.chat.id, False, True)
+        # Получить название языка поиска
+        language = await Default().language_name(user_language, language)
+        gender = await self.db_request_gender(message.chat.id, True)
+        age = await self.db_request_age(message.chat.id, True)
+
+        text = f"<b>{LOCALIZATION[user_language]['search_settings']}</b>\n\
+            \n🌐 {LOCALIZATION[user_language]['language_text']}: <i>{language}</i>\
+            \n🚻 {LOCALIZATION[user_language]['gender']}: <i>{gender}</i>\
+            \n🔞 {LOCALIZATION[user_language]['age']}: <i>{age}</i>"
+        
+        keyboard = await InlineButtons().edit_data(user_language, types.InlineKeyboardMarkup(), True)
+        keyboard = await InlineButtons().to_menu(user_language, keyboard)
+        await Default().send_message(text, message.chat.id, message_id, keyboard)
+
+
+
+    # Смена языка
+    async def change_language(self, message, message_id = None, search_settings = False):
+        user_language = await Default().get_language(message.chat.id)
+
+        text = LOCALIZATION[user_language]['language_select']
+        keyboard = await InlineButtons().change_language(types.InlineKeyboardMarkup(), search_settings, user_language)
+        if search_settings:
+            keyboard = await InlineButtons().to_search_settings(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        else:
+            keyboard = await InlineButtons().to_profile(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        await Default().send_message(text, message.chat.id, message_id, keyboard)
 
     # Смена пола
-    async def change_gender(self, message, message_id = None):
+    async def change_gender(self, message, message_id = None, search_settings = False):
         user_language = await Default().get_language(message.chat.id)
 
         text = LOCALIZATION[user_language]['gender_select']
-        keyboard = await InlineButtons().change_gender(user_language, types.InlineKeyboardMarkup())
-        keyboard = await InlineButtons().to_profile(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        keyboard = await InlineButtons().change_gender(user_language, types.InlineKeyboardMarkup(), search_settings)
+        if search_settings:
+            keyboard = await InlineButtons().to_search_settings(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        else:
+            keyboard = await InlineButtons().to_profile(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
         await Default().send_message(text, message.chat.id, message_id, keyboard)
 
     # Смена возраста
-    async def change_age(self, message, message_id = None):
+    async def change_age(self, message, message_id = None, search_settings = False):
         user_language = await Default().get_language(message.chat.id)
 
         text = LOCALIZATION[user_language]['age_select']
-        keyboard = await InlineButtons().change_age(user_language, types.InlineKeyboardMarkup())
-        keyboard = await InlineButtons().to_profile(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        keyboard = await InlineButtons().change_age(user_language, types.InlineKeyboardMarkup(), search_settings)
+        if search_settings:
+            keyboard = await InlineButtons().to_search_settings(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
+        else:
+            keyboard = await InlineButtons().to_profile(user_language, keyboard, LOCALIZATION[user_language]['back_button'])
         await Default().send_message(text, message.chat.id, message_id, keyboard)
     #endregion ----------------------------------------
     
     
     #region -------------------- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ --------------------
     # Получить пол
-    async def db_request_gender(self, user_id):
-        # Делаем запрос данных
-        result = database.Users().get(user_id, "gender").fetchone()
+    async def db_request_gender(self, user_id, search = False):
+        user_language = await Default().get_language(user_id)
+        result = ""
+        if search:
+            result = database.Searches().get(user_id, "gender").fetchone()
+        else:
+            result = database.Users().get(user_id, "gender").fetchone()
         if result is not None:
-            user_language = await Default().get_language(user_id)
-            return LOCALIZATION[user_language][result[0]]
+            if result[0] == "all":
+                return LOCALIZATION[user_language]["any"]
+            else:
+                return LOCALIZATION[user_language][result[0]]
 
     # Получить возраст
-    async def db_request_age(self, user_id):
-        result = database.Users().get(user_id, "age").fetchone()
+    async def db_request_age(self, user_id, search = False):
+        user_language = await Default().get_language(user_id)
+        if search:
+            result = database.Searches().get(user_id, "age").fetchone()
+        else:
+            result = database.Users().get(user_id, "age").fetchone()
         if result is not None:
-            user_language = await Default().get_language(user_id)
-            return LOCALIZATION[user_language][result[0]]
+            if result[0] == "all":
+                return LOCALIZATION[user_language]["any"]
+            else:
+                return LOCALIZATION[user_language][result[0]]
     
     # Получить премиум
     async def db_request_premium(self, user_id):
