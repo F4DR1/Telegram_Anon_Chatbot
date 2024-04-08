@@ -1,8 +1,12 @@
 {
     "RU": {
-        "not_register": "🔒 Сначала нужно пройти регистрацию!\n\nВыберите ваш пол (можно сменить в любой момент в настройках):",
-        "register_age": "Теперь выбери свой возраст (можно сменить в любой момент в настройках):",
-        "register_finish": "✅ Поздравляем с регистрацией!\nТеперь вы можете общаться в нашем чате.",
+        "language": "Русский",
+
+        "not_register": "🔒 Сначала нужно пройти регистрацию!",
+        "register_language": "🌐 Выберите ваш язык (можно сменить в любой момент в настройках):",
+        "register_gender": "🚻 Теперь выберите ваш пол (можно сменить в любой момент в настройках):",
+        "register_age": "🔞 Теперь выберите свой возраст (можно сменить в любой момент в настройках):",
+        "register_finish": "🔓 Поздравляем с регистрацией!\nТеперь вы можете общаться в нашем чате.",
         "select_action": "Выберите действие:",
         
 
@@ -44,6 +48,10 @@
         "help": "📙 Помощь 📙",
         "premium": "⚜️ Премиум ⚜️",
 
+        "language_text": "Язык",
+        "language_select": "🌐 Выберите пол:",
+        "language_edited": "✅ Ваш язык был успешно изменён!",
+
         "gender": "Пол",
         "gender_select": "🚻 Выберите пол:",
         "gender_edited": "✅ Ваш пол был успешно изменён!",
@@ -71,6 +79,9 @@
         "pro": "Про",
 
 
+        "forever": "Навсегда",
+
+
         "edit_gender_button": "🚻 Изменить пол 🚻",
         "edit_age_button": "🔞 Изменить возраст 🔞",
 
@@ -78,5 +89,96 @@
         "default_to_profile_button": "⬅️ Вернуться в профиль",
         "default_to_menu_button": "⬅️ Вернуться в меню ",
         "to_menu_button": "🗂 В меню"
+    },
+    "EN": {
+        "language": "English",
+
+        "not_register": "🔒 First you need to register!",
+        "register_language": "🌐 Select your language (you can change it at any time in the settings):",
+        "register_gender": "🚻 Now select your gender (you can change it at any time in the settings):",
+        "register_age": "🔞 Now select your age (you can change it at any time in the settings):",
+        "register_finish": "🔓 Congratulations on registering!\nNow you can chat in our chat.",
+        "select_action": "Choose an action:",
+        
+
+        "search_none": "You have no active search / dialog!",
+
+        "search_start_button": "🔍 Start searching 🔍",
+        "search_started": "🔍 We are looking for an interlocutor...",
+        "searched": "The interlocutor has been found. Communicate!",
+
+        "search_stop_button": "❌ Cancel search ❌",
+        "search_stop_question": "The search for an interlocutor is already underway!\nCancel?",
+        "search_stoped": "❌ The search for an interlocutor has stopped!",
+
+        "dialog_stop_button": "❌ Stop dialogue ❌",
+        "dialog_stop_question": "You are already in dialogue. Stop him?",
+        "dialog_stoped": "❌ Dialogue stopped!",
+        "dialog_stoped_partner": "❌ The interlocutor stopped the dialogue.",
+        
+
+        
+        "send_message_partner_none": "❌ You have no interlocutors to whom you could send a message!",
+        "username_none": "❌ You don't have a username!",
+        "username_send": "✅ The link was successfully sent to the interlocutor!",
+
+
+        "help_title": "Basic Commands:",
+        "help_start": "start searching for an interlocutor",
+        "help_stop": "stop search / cancel dialogue",
+        "help_next": "cancel the dialogue and start a new search",
+        "help_link": "send your interlocutor a link to your profile",
+        "help_menu": "menu",
+        "help_help": "list of commands",
+        "help_profile": "your profile",
+        "help_premium": "premium",
+
+
+        "menu": "🗂 Menu 🗂",
+        "profile": "👤 Your Profile 👤",
+        "help": "📙 Help 📙",
+        "premium": "⚜️ Premium ⚜️",
+
+        "language_text": "Language",
+        "language_select": "🌐 Select language:",
+        "language_edited": "✅ Your language has been successfully changed!",
+
+        "gender": "Gender",
+        "gender_select": "🚻 Select gender:",
+        "gender_edited": "✅ Your gender has been successfully changed!",
+        "gender_male": "Male",
+        "gender_female": "Female",
+        "gender_other": "Other",
+
+        "age": "Age",
+        "age_select": "🔞 Select age:",
+        "age_edited": "✅ Your age has been successfully changed!",
+        "age_child": "Up to 14 years old",
+        "age_teen": "14-17 years old",
+        "age_adult": "18 years and older",
+
+
+        "premium_none": "You don't have premium!",
+        "premium_get": "You can purchase premium using the button below:",
+
+        "premium_type": "Type",
+        "premium_date": "Receipt date",
+        "premium_date_end": "End date",
+
+        "lite": "Lite",
+        "standart": "Standart",
+        "pro": "Pro",
+
+
+        "forever": "Forever",
+
+
+        "edit_gender_button": "🚻 Change gender 🚻",
+        "edit_age_button": "🔞 Change age 🔞",
+
+        "back_button": "⬅️ Back",
+        "default_to_profile_button": "⬅️ Return to profile",
+        "default_to_menu_button": "⬅️ Return to menu ",
+        "to_menu_button": "🗂 To menu"
     }
 }

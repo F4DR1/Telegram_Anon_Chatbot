@@ -9,6 +9,7 @@ from config import BOT
 from config import GLOBALDATA
 from config import LOCALIZATION
 from modules.keyboard import InlineButtons
+from modules.keyboard import ReplyButtons
 import modules.database as database
 import modules.functions as functions
 
@@ -17,7 +18,7 @@ import modules.functions as functions
 
 #region -------------------- КОМАНДЫ --------------------
 # Команда /start
-@BOT.message_handler(commands=["start"])
+@BOT.message_handler(commands=['start'])
 async def send_welcome(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -28,7 +29,7 @@ async def send_welcome(message):
 		await functions.Default().start_search_partner(message)
 
 # Команда /stop
-@BOT.message_handler(commands=["stop"])
+@BOT.message_handler(commands=['stop'])
 async def command_stop(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -38,7 +39,7 @@ async def command_stop(message):
 		await functions.Default().stop_search_partner(message)
 
 # Команда /next
-@BOT.message_handler(commands=["next"])
+@BOT.message_handler(commands=['next'])
 async def command_stop(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -48,7 +49,7 @@ async def command_stop(message):
 		await functions.Default().next_search_partner(message)
 
 # Команда /link
-@BOT.message_handler(commands=["link"])
+@BOT.message_handler(commands=['link'])
 async def command_link(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -58,7 +59,7 @@ async def command_link(message):
 		await functions.Default().communication_partner(message, True)
 
 # Команда /menu
-@BOT.message_handler(commands=["menu"])
+@BOT.message_handler(commands=['menu'])
 async def command_menu(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -68,7 +69,7 @@ async def command_menu(message):
 		await functions.AllUsers().menu(message)
 
 # Команда /help
-@BOT.message_handler(commands=["help"])
+@BOT.message_handler(commands=['help'])
 async def command_help(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -78,7 +79,7 @@ async def command_help(message):
 		await functions.AllUsers().help(message)
 
 # Команда /premium
-@BOT.message_handler(commands=["premium"])
+@BOT.message_handler(commands=['premium'])
 async def command_help(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -88,7 +89,7 @@ async def command_help(message):
 		await functions.AllUsers().premium(message)
 
 # Команда /profile
-@BOT.message_handler(commands=["profile"])
+@BOT.message_handler(commands=['profile'])
 async def command_help(message):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(message.chat.id)
@@ -98,7 +99,7 @@ async def command_help(message):
 		await functions.AllUsers().profile(message)
 
 # Все сообщения
-@BOT.message_handler(content_types=["text", "photo", "video", "video_note", "sticker", "document", "audio", "voice"])
+@BOT.message_handler(content_types=['text", "photo", "video", "video_note", "sticker", "document", "audio", "voice'])
 async def messages(message):
 	if message.content_type != "text":
 		await BOT.copy_message(config.CHANNEL, message.chat.id, message.message_id)
@@ -120,25 +121,46 @@ async def messages(message):
 async def callback_worker(call):
 	# Проверка регистрации
 	user_registered = await functions.AllUsers().check_register(call.message.chat.id)
+	user_language = await functions.Default().get_language(call.message.chat.id)
 	keyboard = types.InlineKeyboardMarkup()
 
 
 	#region ----- Изменение данных -----
-	# При изменении пола
-	if call.data == "gender_male" or call.data == "gender_female" or call.data == "gender_other":
+	# При изменении языка
+	if call.data == "language_russia" or call.data == "language_english":
 		text = ""
 		if not user_registered:
 			if len(GLOBALDATA) == 0 or GLOBALDATA[call.message.chat.id] is None:
 				await functions.AllUsers().register(call.message)
 			else:
-				GLOBALDATA[call.message.chat.id]["gender"] = call.data
-				text = LOCALIZATION["RU"]["register_age"]
-				keyboard = await InlineButtons().change_age(keyboard)
+				GLOBALDATA[call.message.chat.id]['language'] = call.data
+				user_language = await functions.Default().language_to_code(call.data)
+				text = LOCALIZATION[user_language]['register_gender']
+				keyboard = await InlineButtons().change_gender(user_language, keyboard)
+		else:
+			database.Users().post(call.message.chat.id, "language", f"{call.data}")
+			text = LOCALIZATION[user_language]['language_edited']
+			keyboard = await InlineButtons().to_profile(user_language, keyboard)
+			keyboard = await InlineButtons().to_menu(user_language, keyboard)
+		reply_keyboard = await ReplyButtons().menu(user_language, types.ReplyKeyboardMarkup(resize_keyboard=True))
+		await functions.Default().send_message("edit keyboard", call.message.chat.id, None, reply_keyboard, True)
+		await functions.Default().send_message(text, call.message.chat.id, call.message.message_id, keyboard)
+	
+	# При изменении пола
+	elif call.data == "gender_male" or call.data == "gender_female" or call.data == "gender_other":
+		text = ""
+		if not user_registered:
+			if len(GLOBALDATA) == 0 or GLOBALDATA[call.message.chat.id] is None:
+				await functions.AllUsers().register(call.message)
+			else:
+				GLOBALDATA[call.message.chat.id]['gender'] = call.data
+				text = LOCALIZATION[user_language]['register_age']
+				keyboard = await InlineButtons().change_age(user_language, keyboard)
 		else:
 			database.Users().post(call.message.chat.id, "gender", f"{call.data}")
-			text = LOCALIZATION["RU"]["gender_edited"]
-			keyboard = await InlineButtons().to_profile(keyboard)
-			keyboard = await InlineButtons().to_menu(keyboard)
+			text = LOCALIZATION[user_language]['gender_edited']
+			keyboard = await InlineButtons().to_profile(user_language, keyboard)
+			keyboard = await InlineButtons().to_menu(user_language, keyboard)
 		await functions.Default().send_message(text, call.message.chat.id, call.message.message_id, keyboard)
 	
 	# При изменении возраста
@@ -148,18 +170,18 @@ async def callback_worker(call):
 			if len(GLOBALDATA) == 0 or GLOBALDATA[call.message.chat.id] is None:
 				await functions.AllUsers().register(call.message)
 			else:
-				GLOBALDATA[call.message.chat.id]["age"] = call.data
-				database.Users().put(call.message.chat.id,
-					GLOBALDATA[call.message.chat.id]["gender"], GLOBALDATA[call.message.chat.id]["age"])
+				GLOBALDATA[call.message.chat.id]['age'] = call.data
+				database.Users().put(call.message.chat.id, GLOBALDATA[call.message.chat.id]['gender'],
+					GLOBALDATA[call.message.chat.id]['age'], GLOBALDATA[call.message.chat.id]['language'])
 				database.Searches().put(call.message.chat.id, "RU")
-				text = LOCALIZATION["RU"]["register_finish"]
-				keyboard = await InlineButtons().start_search(keyboard)
-				keyboard = await InlineButtons().to_menu(keyboard, LOCALIZATION["RU"]["to_menu_button"])
+				text = LOCALIZATION[user_language]['register_finish']
+				keyboard = await InlineButtons().start_search(user_language, keyboard)
+				keyboard = await InlineButtons().to_menu(user_language, keyboard, LOCALIZATION[user_language]['to_menu_button'])
 		else:
 			database.Users().post(call.message.chat.id, "age", f"{call.data}")
-			text = LOCALIZATION["RU"]["age_edited"]
-			keyboard = await InlineButtons().to_profile(keyboard)
-			keyboard = await InlineButtons().to_menu(keyboard)
+			text = LOCALIZATION[user_language]['age_edited']
+			keyboard = await InlineButtons().to_profile(user_language, keyboard)
+			keyboard = await InlineButtons().to_menu(user_language, keyboard)
 		await functions.Default().send_message(text, call.message.chat.id, call.message.message_id, keyboard)
 	#endregion ---------------
 
@@ -198,6 +220,25 @@ async def callback_worker(call):
 	# Возврат в меню
 	elif call.data == "menu":
 		await functions.AllUsers().menu(call.message, call.message.message_id)
+
+
+@BOT.message_handler(func = lambda message: True)
+async def handle_button_click(message):
+	user_registered = await functions.AllUsers().check_register(message.chat.id)
+	if not user_registered:
+		await functions.AllUsers().register(message)
+	else:
+		user_language = await functions.Default().get_language(message.chat.id)
+		if message.text == LOCALIZATION[user_language]['search_start_button']:
+			await functions.Default().next_search_partner(message)
+		if message.text == LOCALIZATION[user_language]['menu']:
+			await functions.AllUsers().menu(message)
+		if message.text == LOCALIZATION[user_language]['profile']:
+			await functions.AllUsers().profile(message)
+		elif message.text == LOCALIZATION[user_language]['premium']:
+			await functions.AllUsers().premium(message)
+		elif message.text == LOCALIZATION[user_language]['help']:
+			await functions.AllUsers().help(message)
 #endregion ----------------------------------------
 
 
@@ -238,14 +279,16 @@ async def search_partners():
 				database.Chats().put(users[1], users[0])
 
 				
-				keyboard = await InlineButtons().stop_search(types.InlineKeyboardMarkup(), LOCALIZATION["RU"]["dialog_stop_button"])
-				text = LOCALIZATION["RU"]["searched"]
-				await functions.Default().send_message(text, users[0], None, keyboard)
+				user_language = await functions.Default().get_language(users[0])
+				keyboard = await InlineButtons().stop_search(types.InlineKeyboardMarkup(),
+					LOCALIZATION[user_language]['dialog_stop_button'])
+				await functions.Default().send_message(LOCALIZATION[user_language]['searched'], users[0], None, keyboard)
 
 				
-				keyboard = await InlineButtons().stop_search(types.InlineKeyboardMarkup(), LOCALIZATION["RU"]["dialog_stop_button"])
-				text = LOCALIZATION["RU"]["searched"]
-				await functions.Default().send_message(text, users[1], None, keyboard)
+				user_language = await functions.Default().get_language(users[1])
+				keyboard = await InlineButtons().stop_search(types.InlineKeyboardMarkup(),
+					LOCALIZATION[user_language]['dialog_stop_button'])
+				await functions.Default().send_message(LOCALIZATION[user_language]['searched'], users[1], None, keyboard)
 
 
 async def main():

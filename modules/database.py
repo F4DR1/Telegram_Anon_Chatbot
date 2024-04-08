@@ -11,9 +11,9 @@ class Users:
 
 
     # Добавляем нового пользователя
-    def put(self, user_id, gender, age):
+    def put(self, user_id, gender, age, language):
         self.create_connect()
-        self.cursor.execute(f"INSERT INTO users(id, gender, age) VALUES({user_id}, '{gender}', '{age}')")
+        self.cursor.execute(f"INSERT INTO users(id, gender, age, language) VALUES({user_id}, '{gender}', '{age}', '{language}')")
         self.connect.commit()
 
     # Меняем значение поля
