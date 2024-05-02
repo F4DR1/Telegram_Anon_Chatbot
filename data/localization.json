@@ -7,6 +7,7 @@
         "register_gender": "🚻 Теперь выберите ваш пол (можно сменить в любой момент в настройках):",
         "register_age": "🔞 Теперь выберите свой возраст (можно сменить в любой момент в настройках):",
         "register_finish": "🔓 Поздравляем с регистрацией!\nТеперь вы можете общаться в нашем чате.",
+        "register_bonus": "🎁 Вам был выдан приветственный бонус в виде",
         "select_action": "Выберите действие:",
         "edit_reply_keyboard": "Клавиатура отредактирована",
         
@@ -75,11 +76,15 @@
 
 
         "premium_none": "У вас нет премиума!",
-        "premium_get": "Вы можете приобрести премиум по кнопке ниже:",
+        "premium_get": "Вы можете приобрести премиум по кнопке ниже: (СКОРО)",
 
         "premium_type": "Тип",
         "premium_date": "Дата получения",
         "premium_date_end": "Дата окончания",
+
+        "premium_ended": "🕑 Время действия премиума истекло!",
+
+        "premium_text": "премиум",
 
         "lite": "Простой",
         "standart": "Стандартный",
@@ -88,6 +93,11 @@
 
         "forever": "Навсегда",
         "any": "Любой",
+
+
+        "day": "день",
+        "days": "дней",
+        "short_days": "дня",
 
 
         "edit_language_button": "🌐 Изменить язык 🌐",
@@ -108,6 +118,7 @@
         "register_gender": "🚻 Now select your gender (you can change it at any time in the settings):",
         "register_age": "🔞 Now select your age (you can change it at any time in the settings):",
         "register_finish": "🔓 Congratulations on registering!\nNow you can chat in our chat.",
+        "register_bonus": "🎁 You have been given a welcome bonus in the form of",
         "select_action": "Choose an action:",
         "edit_reply_keyboard": "Keyboard edited",
         
@@ -176,11 +187,15 @@
 
 
         "premium_none": "You don't have premium!",
-        "premium_get": "You can purchase premium using the button below:",
+        "premium_get": "You can purchase premium using the button below: (COMING SOON)",
 
         "premium_type": "Type",
         "premium_date": "Receipt date",
         "premium_date_end": "End date",
+
+        "premium_ended": "🕑 Premium has expired!",
+
+        "premium_text": "premium",
 
         "lite": "Lite",
         "standart": "Standart",
@@ -189,6 +204,11 @@
 
         "forever": "Forever",
         "any": "Any",
+
+
+        "day": "day",
+        "days": "days",
+        "short_days": "days",
 
 
         "edit_language_button": "🌐 Change language 🌐",

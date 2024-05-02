@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 from telebot.async_telebot import types
 import asyncio
 import random
@@ -183,6 +184,7 @@ async def callback_worker(call):
 	
 	# При изменении возраста
 	elif call.data == "age_child" or call.data == "age_teen" or call.data == "age_adult":
+		give_bonuse = False
 		text = ""
 		if not user_registered:
 			if len(GLOBALDATA) == 0 or GLOBALDATA[call.message.chat.id] is None:
@@ -192,6 +194,7 @@ async def callback_worker(call):
 				database.Users().put(call.message.chat.id, GLOBALDATA[call.message.chat.id]['gender'],
 					GLOBALDATA[call.message.chat.id]['age'], GLOBALDATA[call.message.chat.id]['language'])
 				database.Searches().put(call.message.chat.id, GLOBALDATA[call.message.chat.id]['language'])
+				give_bonuse = True
 				text = LOCALIZATION[user_language]['register_finish']
 				keyboard = await InlineButtons().start_search(user_language, keyboard)
 				keyboard = await InlineButtons().to_menu(user_language, keyboard, LOCALIZATION[user_language]['to_menu_button'])
@@ -201,6 +204,18 @@ async def callback_worker(call):
 			keyboard = await InlineButtons().to_profile(user_language, keyboard)
 			keyboard = await InlineButtons().to_menu(user_language, keyboard)
 		await functions.Default().send_message(text, call.message.chat.id, call.message.message_id, keyboard)
+
+		#region ----- Выдать премиум -----
+		if give_bonuse is True:
+			type = "lite"
+			days = 3
+			database.Premiums().put(call.message.chat.id, type, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), days)
+			txt = f"{LOCALIZATION[user_language]['register_bonus']} \
+					<code>{days} {LOCALIZATION[user_language]['days']} \
+					{LOCALIZATION[user_language][type]} \
+					{LOCALIZATION[user_language]['premium_text']}</code>"
+			await functions.Default().send_message(txt, call.message.chat.id)
+		#endregion ---------------
 	
 	
 	
@@ -310,6 +325,28 @@ async def callback_worker(call):
 
 
 
+async def premium_check():
+	print("Проверка премиумов запущена!")
+	while True:
+		# Ожидание в 60 секунд (для работы других функций бота)
+		await asyncio.sleep(60)
+
+		# Получаем список премиумов пользователей
+		users_premiums = database.Premiums().get(None, "*").fetchall()
+		if users_premiums is None:
+			continue
+
+		# Перебираем все премиумы
+		for premium in users_premiums:
+			date = datetime.strptime(premium[2], '%Y-%m-%d %H:%M:%S')
+			date_end = date + datetime.timedelta(days=premium[3])
+			if datetime.now() >= date_end:
+				database.Premiums().delete(premium[0])
+
+				user_language = await functions.Default().get_language(premium[0])
+				await functions.Default().send_message(LOCALIZATION[user_language]['premium_ended'], premium[0])
+
+
 
 # Поиск собеседников (отдельная задача, работающая всегда)
 async def random_search_partners():
@@ -407,10 +444,10 @@ async def random_search_partners():
 
 
 async def main():
-	# Стартуем бота
 	asyncio.create_task(BOT.polling())
 	print("Бот запущен!")
-	# Стартуем поиск собеседников
+	
+	asyncio.create_task(premium_check())
 	await asyncio.create_task(random_search_partners())
 
 

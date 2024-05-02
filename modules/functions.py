@@ -227,10 +227,12 @@ class AllUsers:
         user_language = await Default().get_language(message.chat.id)
 
         type, date, end_date = await self.db_request_premium(message.chat.id)
-        text = f"{LOCALIZATION[user_language]['premium_none']}\n{LOCALIZATION[user_language]['premium_get']}"
-        if type is not None:
+        text = None
+        if type is None:
+            text = f"{LOCALIZATION[user_language]['premium_none']}\n{LOCALIZATION[user_language]['premium_get']}"
+        else:
             text = f"⚜️ <b>{LOCALIZATION[user_language]['premium']}</b> ⚜️\n\
-                \{LOCALIZATION[user_language]['premium_type']}: <i>{LOCALIZATION[user_language][type]}</i>\
+                \{LOCALIZATION[user_language]['premium_type']}: <i>{type}</i>\
                 \n{LOCALIZATION[user_language]['premium_date']}: <i>{date}</i>\
                 \{LOCALIZATION[user_language]['premium_date_end']}: <i>{end_date}</i>"
         keyboard = await InlineButtons().to_menu(user_language, types.InlineKeyboardMarkup())
@@ -330,12 +332,15 @@ class AllUsers:
         if result is not None:
             user_language = await Default().get_language(user_id)
 
-            date = datetime.strptime(result[2], '%Y-%m-%d').date()
-            end_date = LOCALIZATION[user_language]['forever']
+            type = LOCALIZATION[user_language][result[1]]
+            date = datetime.strptime(result[2], '%Y-%m-%d %H:%M:%S')
+            end_date = None
             if result[3] != 0:
                 end_date = date + datetime.timedelta(days=result[3])
+            else:
+                end_date = LOCALIZATION[user_language]['forever']
             
-            return result[1], date, end_date
+            return type, date, end_date
         else:
             return None, None, None
     #endregion ----------------------------------------
